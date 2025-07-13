@@ -82,10 +82,24 @@ document.getElementById('runButton').addEventListener('click', async () => {
 
     document.getElementById('progressContainer').style.display = 'none';
 
-    let html = `<h3>Summary Data</h3><table class='table table-bordered'><tbody>`;
+    // ================================
+    // ⭐️ Fixed summary table with header
+    // ================================
+    let html = `<h3>Summary Data</h3><table class='table table-bordered'><thead><tr>
+<th>Metric</th><th>Explanation</th>`;
+
+    // Add horizon headers
+    for (const horizon in data.summary_data) {
+      if (!["Metric", "Explanation"].includes(horizon)) {
+        html += `<th>${horizon}-Year</th>`;
+      }
+    }
+    html += `</tr></thead><tbody>`;
+
     const summary = data.summary_data;
     const metrics = summary['Metric'];
     const explanations = summary['Explanation'];
+
     for (let i = 0; i < metrics.length; i++) {
       html += `<tr><th>${metrics[i]}</th><td>${explanations[i]}</td>`;
       for (const horizon in summary) {
