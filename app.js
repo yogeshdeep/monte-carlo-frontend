@@ -1,4 +1,3 @@
-// Replace with your Render backend URL
 const apiUrl = 'https://monte-carlo-api.onrender.com/simulate';
 
 function simulateProgressBar(durationMs = 10000) {
@@ -12,6 +11,8 @@ function simulateProgressBar(durationMs = 10000) {
     bar.setAttribute('aria-valuenow', 0);
     bar.textContent = '0%';
 
+    estimate.textContent = `Working... estimated time ~10s`;
+
     const startTime = Date.now();
     const interval = 100;
 
@@ -22,12 +23,8 @@ function simulateProgressBar(durationMs = 10000) {
       bar.setAttribute('aria-valuenow', progress.toFixed(0));
       bar.textContent = `${progress.toFixed(0)}%`;
 
-      const remaining = Math.max(0, (durationMs - elapsed) / 1000).toFixed(1);
-      estimate.textContent = `~${remaining} seconds remaining`;
-
       if (progress >= 100) {
         clearInterval(timer);
-        estimate.textContent = `Finishing...`;
         resolve();
       }
     }, interval);
@@ -39,7 +36,6 @@ document.getElementById('runButton').addEventListener('click', async () => {
   runButton.disabled = true;
   runButton.innerText = 'Running...';
 
-  // Collect form values
   const history_years = parseInt(document.getElementById('history_years').value);
   const drift_adjust = parseFloat(document.getElementById('drift_adjust').value) / 100;
   const horizons = document.getElementById('simulation_horizons').value
@@ -51,29 +47,33 @@ document.getElementById('runButton').addEventListener('click', async () => {
   const rebased = document.getElementById('rebased').checked;
   const num_simulations = parseInt(document.getElementById('num_simulations').value);
 
-  const payload = {
-    history_years,
-    drift_adjust,
-    simulation_horizons: horizons,
-    index_symbol,
-    simulation_type,
-    rebased,
-    num_simulations
-  };
-
   document.getElementById('results').innerHTML = "";
+
+  const formData = new FormData();
+  formData.append('history_years', history_years);
+  formData.append('drift_adjust', drift_adjust);
+  formData.append('simulation_horizons', JSON.stringify(horizons));
+  formData.append('index_symbol', index_symbol);
+  formData.append('simulation_type', simulation_type);
+  formData.append('rebased', rebased);
+  formData.append('num_simulations', num_simulations);
+
+  const fileInput = document.getElementById('portfolio_file');
+  if (fileInput.files.length > 0) {
+    formData.append('portfolio_file', fileInput.files[0]);
+  }
+
   const progressPromise = simulateProgressBar(10000);
 
   try {
     const fetchPromise = fetch(apiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: formData
     });
 
     const [res] = await Promise.all([fetchPromise, progressPromise]);
-
     const data = await res.json();
+
     if (data.status !== "success") {
       document.getElementById('results').innerHTML = `<div class='alert alert-danger'>Error: ${data.message}</div>`;
       return;
@@ -81,7 +81,6 @@ document.getElementById('runButton').addEventListener('click', async () => {
 
     document.getElementById('progressContainer').style.display = 'none';
 
-    // Display results
     let html = `<h3>Summary Data</h3><table class='table table-bordered'><tbody>`;
     const summary = data.summary_data;
     const metrics = summary['Metric'];
