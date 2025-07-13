@@ -48,6 +48,7 @@ document.getElementById('runButton').addEventListener('click', async () => {
   const num_simulations = parseInt(document.getElementById('num_simulations').value);
 
   document.getElementById('results').innerHTML = "";
+  document.getElementById('chartsContainer').innerHTML = "";
 
   const formData = new FormData();
   formData.append('history_years', history_years);
@@ -96,6 +97,76 @@ document.getElementById('runButton').addEventListener('click', async () => {
     }
     html += `</tbody></table>`;
     document.getElementById('results').innerHTML = html;
+
+    // ========== Multiple charts ==========
+    const chartsContainer = document.getElementById('chartsContainer');
+    chartsContainer.innerHTML = '';
+
+    for (const horizon in data.histogram_samples) {
+      const samples = data.histogram_samples[horizon];
+
+      // Create histogram bins
+      const binCount = 20;
+      const min = Math.min(...samples);
+      const max = Math.max(...samples);
+      const binWidth = (max - min) / binCount;
+      const bins = new Array(binCount).fill(0);
+
+      samples.forEach(val => {
+        const idx = Math.min(Math.floor((val - min) / binWidth), binCount - 1);
+        bins[idx]++;
+      });
+
+      const labels = bins.map((_, i) => (min + i * binWidth).toFixed(0));
+
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      canvas.id = `chart_${horizon}`;
+      canvas.style.maxWidth = '800px';
+      canvas.style.margin = '20px auto';
+      canvas.style.display = 'block';
+
+      chartsContainer.appendChild(canvas);
+
+      const ctx = canvas.getContext('2d');
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: `Frequency for ${horizon}-Year Horizon`,
+            data: bins,
+            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: `Simulation Result Histogram - ${horizon}-Year`
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Portfolio Value'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Frequency'
+              }
+            }
+          }
+        }
+      });
+    }
 
   } catch (error) {
     document.getElementById('results').innerHTML = `<div class='alert alert-danger'>Error: ${error.message}</div>`;
