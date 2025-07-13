@@ -1,5 +1,5 @@
 document.getElementById('runButton').addEventListener('click', async () => {
-  const apiUrl = 'https://monte-carlo-api.onrender.com';  // replace with your actual Render backend URL
+  const apiUrl = 'https://monte-carlo-api.onrender.com/simulate';  // replace with your actual Render backend URL
 
   const history_years = parseInt(document.getElementById('history_years').value);
   const drift_adjust = parseFloat(document.getElementById('drift_adjust').value) / 100;
