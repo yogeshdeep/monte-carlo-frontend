@@ -89,12 +89,10 @@ document.getElementById('runButton').addEventListener('click', async () => {
     const metrics = summary['Metric'];
     const explanations = summary['Explanation'];
 
-    // ✅ Collect horizon keys (and sort them numerically if possible)
     const horizonKeys = Object.keys(summary)
                               .filter(k => !["Metric", "Explanation"].includes(k))
                               .sort((a, b) => parseInt(a) - parseInt(b));
 
-    // ✅ Build header
     let html = `<h3>Summary Data</h3><table class='table table-bordered'><thead><tr>
 <th>Metric</th><th>Explanation</th>`;
 
@@ -103,7 +101,6 @@ document.getElementById('runButton').addEventListener('click', async () => {
     });
     html += `</tr></thead><tbody>`;
 
-    // ✅ Build data rows
     for (let i = 0; i < metrics.length; i++) {
       html += `<tr><th>${metrics[i]}</th><td>${explanations[i]}</td>`;
       horizonKeys.forEach(h => {
@@ -114,14 +111,15 @@ document.getElementById('runButton').addEventListener('click', async () => {
     html += `</tbody></table>`;
     document.getElementById('results').innerHTML = html;
 
-    // ========== Multiple charts ==========
+    // ================================
+    // ⭐️ Improved Multiple Charts Rendering
+    // ================================
     const chartsContainer = document.getElementById('chartsContainer');
     chartsContainer.innerHTML = '';
 
     for (const horizon in data.histogram_samples) {
       const samples = data.histogram_samples[horizon];
 
-      // Create histogram bins
       const binCount = 20;
       const min = Math.min(...samples);
       const max = Math.max(...samples);
@@ -135,14 +133,26 @@ document.getElementById('runButton').addEventListener('click', async () => {
 
       const labels = bins.map((_, i) => (min + i * binWidth).toFixed(0));
 
-      // Create canvas
+      // ⭐️ Create a nice responsive wrapper
+      const wrapper = document.createElement('div');
+      wrapper.className = 'chart-wrapper mb-4';
+      wrapper.style.width = '100%';
+      wrapper.style.maxWidth = '1000px';
+      wrapper.style.margin = '30px auto';
+
+      const title = document.createElement('h4');
+      title.innerText = `${horizon}-Year Simulation Histogram`;
+      title.className = 'text-center my-3';
+
       const canvas = document.createElement('canvas');
       canvas.id = `chart_${horizon}`;
-      canvas.style.maxWidth = '800px';
-      canvas.style.margin = '20px auto';
+      canvas.style.width = '100%';
+      canvas.style.height = '400px';
       canvas.style.display = 'block';
 
-      chartsContainer.appendChild(canvas);
+      wrapper.appendChild(title);
+      wrapper.appendChild(canvas);
+      chartsContainer.appendChild(wrapper);
 
       const ctx = canvas.getContext('2d');
 
@@ -160,6 +170,7 @@ document.getElementById('runButton').addEventListener('click', async () => {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             title: {
               display: true,
