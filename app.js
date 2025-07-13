@@ -46,15 +46,18 @@ document.getElementById('runButton').addEventListener('click', async () => {
       body: formData
     });
 
-    // 2️⃣ Listen to progress
+    // 2️⃣ Listen to progress updates via SSE
     const eventSource = new EventSource(progressUrl);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
 
+      // Round progress to integer (no decimals)
+      const roundedProgress = Math.max(0, Math.min(100, Math.round(data.progress)));
+
       // Update progress bar
-      bar.style.width = `${data.progress}%`;
-      bar.textContent = `${data.progress}%`;
+      bar.style.width = `${roundedProgress}%`;
+      bar.textContent = `${roundedProgress}%`;
       estimate.textContent = data.message;
 
       if (data.done) {
@@ -63,12 +66,19 @@ document.getElementById('runButton').addEventListener('click', async () => {
         runButton.disabled = false;
         runButton.innerText = 'Run Simulation';
 
-        if (data.result.status === "success") {
+        if (data.result && data.result.status === "success") {
           renderResults(data.result);
         } else {
-          document.getElementById('results').innerHTML = `<div class='alert alert-danger'>Error: ${data.result.message}</div>`;
+          document.getElementById('results').innerHTML = `<div class='alert alert-danger'>Error: ${data.result ? data.result.message : 'Unknown error'}</div>`;
         }
       }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      estimate.textContent = 'Connection lost or server error.';
+      runButton.disabled = false;
+      runButton.innerText = 'Run Simulation';
     };
 
   } catch (error) {
@@ -143,7 +153,7 @@ function renderResults(result) {
 
     const canvasContainer = document.createElement('div');
     canvasContainer.style.position = 'relative';
-    canvasContainer.style.height = '300px';  // Taller for better readability
+    canvasContainer.style.height = '300px';  
     canvasContainer.style.width = '100%';
 
     const canvas = document.createElement('canvas');
