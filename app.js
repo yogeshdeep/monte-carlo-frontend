@@ -133,25 +133,31 @@ document.getElementById('runButton').addEventListener('click', async () => {
 
       const labels = bins.map((_, i) => (min + i * binWidth).toFixed(0));
 
-      // ⭐️ Create a nice responsive wrapper
+      // ⭐️ Create a nice card-like wrapper for better layout
       const wrapper = document.createElement('div');
-      wrapper.className = 'chart-wrapper mb-4';
+      wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
       wrapper.style.width = '100%';
-      wrapper.style.maxWidth = '1000px';
-      wrapper.style.margin = '30px auto';
+      wrapper.style.maxWidth = '900px';
+      wrapper.style.margin = '40px auto';
 
+      // Add a title
       const title = document.createElement('h4');
       title.innerText = `${horizon}-Year Simulation Histogram`;
-      title.className = 'text-center my-3';
+      title.className = 'text-center mb-3';
+      wrapper.appendChild(title);
+
+      // Responsive canvas container
+      const canvasContainer = document.createElement('div');
+      canvasContainer.style.position = 'relative';
+      canvasContainer.style.height = '500px';   // Change for taller charts
+      canvasContainer.style.width = '100%';
 
       const canvas = document.createElement('canvas');
       canvas.id = `chart_${horizon}`;
-      canvas.style.width = '100%';
-      canvas.style.height = '400px';
       canvas.style.display = 'block';
 
-      wrapper.appendChild(title);
-      wrapper.appendChild(canvas);
+      canvasContainer.appendChild(canvas);
+      wrapper.appendChild(canvasContainer);
       chartsContainer.appendChild(wrapper);
 
       const ctx = canvas.getContext('2d');
@@ -175,6 +181,9 @@ document.getElementById('runButton').addEventListener('click', async () => {
             title: {
               display: true,
               text: `Simulation Result Histogram - ${horizon}-Year`
+            },
+            legend: {
+              display: false
             }
           },
           scales: {
@@ -188,7 +197,8 @@ document.getElementById('runButton').addEventListener('click', async () => {
               title: {
                 display: true,
                 text: 'Frequency'
-              }
+              },
+              beginAtZero: true
             }
           }
         }
