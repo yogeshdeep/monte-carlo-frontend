@@ -1,7 +1,45 @@
-document.getElementById('runButton').addEventListener('click', async () => {
-  const apiUrl = 'https://monte-carlo-api.onrender.com/simulate';
-  // replace with your actual Render backend URL
+// Replace with your Render backend URL
+const apiUrl = 'https://monte-carlo-api.onrender.com/simulate';
 
+function simulateProgressBar(durationMs = 10000) {
+  return new Promise((resolve) => {
+    const container = document.getElementById('progressContainer');
+    const bar = document.getElementById('progressBar');
+    const estimate = document.getElementById('progressEstimate');
+
+    container.style.display = 'block';
+    bar.style.width = '0%';
+    bar.setAttribute('aria-valuenow', 0);
+    bar.textContent = '0%';
+
+    const startTime = Date.now();
+    const interval = 100;
+
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min((elapsed / durationMs) * 100, 100);
+      bar.style.width = `${progress.toFixed(0)}%`;
+      bar.setAttribute('aria-valuenow', progress.toFixed(0));
+      bar.textContent = `${progress.toFixed(0)}%`;
+
+      const remaining = Math.max(0, (durationMs - elapsed) / 1000).toFixed(1);
+      estimate.textContent = `~${remaining} seconds remaining`;
+
+      if (progress >= 100) {
+        clearInterval(timer);
+        estimate.textContent = `Finishing...`;
+        resolve();
+      }
+    }, interval);
+  });
+}
+
+document.getElementById('runButton').addEventListener('click', async () => {
+  const runButton = document.getElementById('runButton');
+  runButton.disabled = true;
+  runButton.innerText = 'Running...';
+
+  // Collect form values
   const history_years = parseInt(document.getElementById('history_years').value);
   const drift_adjust = parseFloat(document.getElementById('drift_adjust').value) / 100;
   const horizons = document.getElementById('simulation_horizons').value
@@ -23,20 +61,25 @@ document.getElementById('runButton').addEventListener('click', async () => {
     num_simulations
   };
 
-  document.getElementById('results').innerHTML = "<p class='text-info'>Running simulation... please wait.</p>";
+  document.getElementById('results').innerHTML = "";
+  const progressPromise = simulateProgressBar(10000);
 
   try {
-    const res = await fetch(apiUrl, {
+    const fetchPromise = fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+
+    const [res] = await Promise.all([fetchPromise, progressPromise]);
 
     const data = await res.json();
     if (data.status !== "success") {
       document.getElementById('results').innerHTML = `<div class='alert alert-danger'>Error: ${data.message}</div>`;
       return;
     }
+
+    document.getElementById('progressContainer').style.display = 'none';
 
     // Display results
     let html = `<h3>Summary Data</h3><table class='table table-bordered'><tbody>`;
@@ -53,11 +96,13 @@ document.getElementById('runButton').addEventListener('click', async () => {
       html += `</tr>`;
     }
     html += `</tbody></table>`;
-
     document.getElementById('results').innerHTML = html;
 
   } catch (error) {
-    console.error(error);
     document.getElementById('results').innerHTML = `<div class='alert alert-danger'>Error: ${error.message}</div>`;
+  } finally {
+    runButton.disabled = false;
+    runButton.innerText = 'Run Simulation';
+    document.getElementById('progressContainer').style.display = 'none';
   }
 });
