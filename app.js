@@ -83,30 +83,32 @@ document.getElementById('runButton').addEventListener('click', async () => {
     document.getElementById('progressContainer').style.display = 'none';
 
     // ================================
-    // ⭐️ Fixed summary table with header
+    // ⭐️ Fixed summary table with horizon headers
     // ================================
-    let html = `<h3>Summary Data</h3><table class='table table-bordered'><thead><tr>
-<th>Metric</th><th>Explanation</th>`;
-
-    // Add horizon headers
-    for (const horizon in data.summary_data) {
-      if (!["Metric", "Explanation"].includes(horizon)) {
-        html += `<th>${horizon}-Year</th>`;
-      }
-    }
-    html += `</tr></thead><tbody>`;
-
     const summary = data.summary_data;
     const metrics = summary['Metric'];
     const explanations = summary['Explanation'];
 
+    // ✅ Collect horizon keys (and sort them numerically if possible)
+    const horizonKeys = Object.keys(summary)
+                              .filter(k => !["Metric", "Explanation"].includes(k))
+                              .sort((a, b) => parseInt(a) - parseInt(b));
+
+    // ✅ Build header
+    let html = `<h3>Summary Data</h3><table class='table table-bordered'><thead><tr>
+<th>Metric</th><th>Explanation</th>`;
+
+    horizonKeys.forEach(h => {
+      html += `<th>${h}-Year</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    // ✅ Build data rows
     for (let i = 0; i < metrics.length; i++) {
       html += `<tr><th>${metrics[i]}</th><td>${explanations[i]}</td>`;
-      for (const horizon in summary) {
-        if (!["Metric", "Explanation"].includes(horizon)) {
-          html += `<td>${summary[horizon][i]}</td>`;
-        }
-      }
+      horizonKeys.forEach(h => {
+        html += `<td>${summary[h][i]}</td>`;
+      });
       html += `</tr>`;
     }
     html += `</tbody></table>`;
