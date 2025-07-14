@@ -40,19 +40,17 @@ document.getElementById('runButton').addEventListener('click', async () => {
   }
 
   try {
-    // 1️⃣ Start simulation
     await fetch(startUrl, {
       method: 'POST',
       body: formData
     });
 
-    // 2️⃣ Listen to progress updates via SSE
     const eventSource = new EventSource(progressUrl);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
       const roundedProgress = Math.max(0, Math.min(100, Math.round(data.progress)));
+
       bar.style.width = `${roundedProgress}%`;
       bar.textContent = `${roundedProgress}%`;
       estimate.textContent = data.message;
@@ -121,36 +119,39 @@ function renderResults(result) {
     renderHistogramChart(horizon, samples, chartsContainer);
   }
 
-  // ⭐️ Synthetic Portfolio vs Index Time Series
-  if (result.synthetic_dates && result.synthetic_dates.length > 0) {
+  // ⭐️ Synthetic Portfolio vs Index Comparison
+  if (result.synthetic_series && result.index_series) {
+    const xLabels = Array.from({ length: Math.min(result.synthetic_series.length, result.index_series.length) }, (_, i) => `Day ${i + 1}`);
     renderDualLineChart(
       'Synthetic Portfolio vs Index (Normalized)',
       'Portfolio',
       'Index',
-      result.synthetic_dates,
-      result.synthetic_normalized,
-      result.index_normalized,
+      xLabels,
+      result.synthetic_series,
+      result.index_series,
       chartsContainer
     );
   }
 
-  // ⭐️ Rolling Volatility with dates
+  // ⭐️ Rolling Volatility
   if (result.rolling_volatility && result.rolling_volatility.length > 0) {
+    const volXLabels = Array.from({ length: result.rolling_volatility.length }, (_, i) => `Day ${i + 1}`);
     renderLineChart(
       'Rolling Volatility (30-day)',
       'Volatility',
-      result.synthetic_dates.slice(-result.rolling_volatility.length),
+      volXLabels,
       result.rolling_volatility,
       chartsContainer
     );
   }
 
-  // ⭐️ Rolling Beta with dates
+  // ⭐️ Rolling Beta
   if (result.rolling_beta && result.rolling_beta.length > 0) {
+    const betaXLabels = Array.from({ length: result.rolling_beta.length }, (_, i) => `Day ${i + 1}`);
     renderLineChart(
       'Rolling Beta vs Index (30-day)',
       'Beta',
-      result.synthetic_dates.slice(-result.rolling_beta.length),
+      betaXLabels,
       result.rolling_beta,
       chartsContainer
     );
@@ -238,7 +239,7 @@ function renderHistogramChart(horizon, samples, container) {
   });
 }
 
-// ⭐️ Single Line Chart with Dates
+// ⭐️ Single Line Chart
 function renderLineChart(titleText, labelText, xLabels, dataSeries, container) {
   const wrapper = document.createElement('div');
   wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
@@ -294,7 +295,7 @@ function renderLineChart(titleText, labelText, xLabels, dataSeries, container) {
         x: {
           title: {
             display: true,
-            text: 'Date'
+            text: 'Time (Days)'
           }
         },
         y: {
@@ -309,7 +310,7 @@ function renderLineChart(titleText, labelText, xLabels, dataSeries, container) {
   });
 }
 
-// ⭐️ Dual Line Chart (Portfolio vs Index)
+// ⭐️ Dual Line Chart
 function renderDualLineChart(titleText, label1, label2, xLabels, data1, data2, container) {
   const wrapper = document.createElement('div');
   wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
@@ -373,7 +374,7 @@ function renderDualLineChart(titleText, label1, label2, xLabels, data1, data2, c
         x: {
           title: {
             display: true,
-            text: 'Date'
+            text: 'Time (Days)'
           }
         },
         y: {
