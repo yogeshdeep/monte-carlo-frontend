@@ -40,17 +40,19 @@ document.getElementById('runButton').addEventListener('click', async () => {
   }
 
   try {
+    // 1️⃣ Start simulation
     await fetch(startUrl, {
       method: 'POST',
       body: formData
     });
 
+    // 2️⃣ Listen to progress updates via SSE
     const eventSource = new EventSource(progressUrl);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      const roundedProgress = Math.max(0, Math.min(100, Math.round(data.progress)));
 
+      const roundedProgress = Math.max(0, Math.min(100, Math.round(data.progress)));
       bar.style.width = `${roundedProgress}%`;
       bar.textContent = `${roundedProgress}%`;
       estimate.textContent = data.message;
@@ -119,56 +121,43 @@ function renderResults(result) {
     renderHistogramChart(horizon, samples, chartsContainer);
   }
 
-  // ⭐️ Single Series Line Charts
-  if (result.synthetic_series && result.synthetic_series.length > 0) {
-    renderLineChart(
-      'Synthetic Portfolio Value Over Time',
-      'Synthetic Portfolio',
-      result.synthetic_series,
+  // ⭐️ Synthetic Portfolio vs Index Time Series
+  if (result.synthetic_dates && result.synthetic_dates.length > 0) {
+    renderDualLineChart(
+      'Synthetic Portfolio vs Index (Normalized)',
+      'Portfolio',
+      'Index',
+      result.synthetic_dates,
+      result.synthetic_normalized,
+      result.index_normalized,
       chartsContainer
     );
   }
+
+  // ⭐️ Rolling Volatility with dates
   if (result.rolling_volatility && result.rolling_volatility.length > 0) {
     renderLineChart(
       'Rolling Volatility (30-day)',
       'Volatility',
+      result.synthetic_dates.slice(-result.rolling_volatility.length),
       result.rolling_volatility,
       chartsContainer
     );
   }
+
+  // ⭐️ Rolling Beta with dates
   if (result.rolling_beta && result.rolling_beta.length > 0) {
     renderLineChart(
       'Rolling Beta vs Index (30-day)',
       'Beta',
-      result.rolling_beta,
-      chartsContainer
-    );
-  }
-
-  // ⭐️ Combined Charts
-  if (result.synthetic_series && result.index_series) {
-    renderComparisonChart(
-      'Synthetic Portfolio vs Index (Normalized)',
-      'Portfolio',
-      'Index',
-      result.synthetic_series,
-      result.index_series,
-      chartsContainer
-    );
-  }
-
-  if (result.rolling_volatility && result.rolling_beta) {
-    renderComparisonChart(
-      'Rolling Volatility & Beta (30-day)',
-      'Volatility',
-      'Beta',
-      result.rolling_volatility,
+      result.synthetic_dates.slice(-result.rolling_beta.length),
       result.rolling_beta,
       chartsContainer
     );
   }
 }
 
+// ⭐️ Histogram Chart
 function renderHistogramChart(horizon, samples, container) {
   const binCount = 20;
   const min = Math.min(...samples);
@@ -249,7 +238,8 @@ function renderHistogramChart(horizon, samples, container) {
   });
 }
 
-function renderLineChart(titleText, labelText, dataSeries, container) {
+// ⭐️ Single Line Chart with Dates
+function renderLineChart(titleText, labelText, xLabels, dataSeries, container) {
   const wrapper = document.createElement('div');
   wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
   wrapper.style.width = '100%';
@@ -277,7 +267,7 @@ function renderLineChart(titleText, labelText, dataSeries, container) {
   new Chart(ctx, {
     type: 'line',
     data: {
-      labels: Array.from({ length: dataSeries.length }, (_, i) => i + 1),
+      labels: xLabels,
       datasets: [{
         label: labelText,
         data: dataSeries,
@@ -304,7 +294,7 @@ function renderLineChart(titleText, labelText, dataSeries, container) {
         x: {
           title: {
             display: true,
-            text: 'Time'
+            text: 'Date'
           }
         },
         y: {
@@ -319,7 +309,8 @@ function renderLineChart(titleText, labelText, dataSeries, container) {
   });
 }
 
-function renderComparisonChart(titleText, label1, label2, series1, series2, container) {
+// ⭐️ Dual Line Chart (Portfolio vs Index)
+function renderDualLineChart(titleText, label1, label2, xLabels, data1, data2, container) {
   const wrapper = document.createElement('div');
   wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
   wrapper.style.width = '100%';
@@ -347,12 +338,12 @@ function renderComparisonChart(titleText, label1, label2, series1, series2, cont
   new Chart(ctx, {
     type: 'line',
     data: {
-      labels: Array.from({ length: Math.min(series1.length, series2.length) }, (_, i) => i + 1),
+      labels: xLabels,
       datasets: [
         {
           label: label1,
-          data: series1,
-          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          data: data1,
+          backgroundColor: 'rgba(75, 192, 192, 0.4)',
           borderColor: 'rgba(75, 192, 192, 1)',
           borderWidth: 2,
           fill: true,
@@ -360,8 +351,8 @@ function renderComparisonChart(titleText, label1, label2, series1, series2, cont
         },
         {
           label: label2,
-          data: series2,
-          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          data: data2,
+          backgroundColor: 'rgba(255, 99, 132, 0.4)',
           borderColor: 'rgba(255, 99, 132, 1)',
           borderWidth: 2,
           fill: true,
@@ -382,13 +373,13 @@ function renderComparisonChart(titleText, label1, label2, series1, series2, cont
         x: {
           title: {
             display: true,
-            text: 'Time'
+            text: 'Date'
           }
         },
         y: {
           title: {
             display: true,
-            text: 'Value'
+            text: 'Normalized Value'
           },
           beginAtZero: false
         }
