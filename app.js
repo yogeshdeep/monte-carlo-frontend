@@ -119,46 +119,56 @@ function renderResults(result) {
     renderHistogramChart(horizon, samples, chartsContainer);
   }
 
-  // ⭐️ Synthetic Portfolio vs Index Comparison
+  // ⭐️ Single Series Line Charts
+  if (result.synthetic_series && result.synthetic_series.length > 0) {
+    renderLineChart(
+      'Synthetic Portfolio Value Over Time',
+      'Synthetic Portfolio',
+      result.synthetic_series,
+      chartsContainer
+    );
+  }
+  if (result.rolling_volatility && result.rolling_volatility.length > 0) {
+    renderLineChart(
+      'Rolling Volatility (30-day)',
+      'Volatility',
+      result.rolling_volatility,
+      chartsContainer
+    );
+  }
+  if (result.rolling_beta && result.rolling_beta.length > 0) {
+    renderLineChart(
+      'Rolling Beta vs Index (30-day)',
+      'Beta',
+      result.rolling_beta,
+      chartsContainer
+    );
+  }
+
+  // ⭐️ Combined Charts
   if (result.synthetic_series && result.index_series) {
-    const xLabels = Array.from({ length: Math.min(result.synthetic_series.length, result.index_series.length) }, (_, i) => `Day ${i + 1}`);
-    renderDualLineChart(
+    renderComparisonChart(
       'Synthetic Portfolio vs Index (Normalized)',
       'Portfolio',
       'Index',
-      xLabels,
       result.synthetic_series,
       result.index_series,
       chartsContainer
     );
   }
 
-  // ⭐️ Rolling Volatility
-  if (result.rolling_volatility && result.rolling_volatility.length > 0) {
-    const volXLabels = Array.from({ length: result.rolling_volatility.length }, (_, i) => `Day ${i + 1}`);
-    renderLineChart(
-      'Rolling Volatility (30-day)',
+  if (result.rolling_volatility && result.rolling_beta) {
+    renderComparisonChart(
+      'Rolling Volatility & Beta (30-day)',
       'Volatility',
-      volXLabels,
-      result.rolling_volatility,
-      chartsContainer
-    );
-  }
-
-  // ⭐️ Rolling Beta
-  if (result.rolling_beta && result.rolling_beta.length > 0) {
-    const betaXLabels = Array.from({ length: result.rolling_beta.length }, (_, i) => `Day ${i + 1}`);
-    renderLineChart(
-      'Rolling Beta vs Index (30-day)',
       'Beta',
-      betaXLabels,
+      result.rolling_volatility,
       result.rolling_beta,
       chartsContainer
     );
   }
 }
 
-// ⭐️ Histogram Chart
 function renderHistogramChart(horizon, samples, container) {
   const binCount = 20;
   const min = Math.min(...samples);
@@ -239,8 +249,7 @@ function renderHistogramChart(horizon, samples, container) {
   });
 }
 
-// ⭐️ Single Line Chart
-function renderLineChart(titleText, labelText, xLabels, dataSeries, container) {
+function renderLineChart(titleText, labelText, dataSeries, container) {
   const wrapper = document.createElement('div');
   wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
   wrapper.style.width = '100%';
@@ -268,7 +277,7 @@ function renderLineChart(titleText, labelText, xLabels, dataSeries, container) {
   new Chart(ctx, {
     type: 'line',
     data: {
-      labels: xLabels,
+      labels: Array.from({ length: dataSeries.length }, (_, i) => i + 1),
       datasets: [{
         label: labelText,
         data: dataSeries,
@@ -295,7 +304,7 @@ function renderLineChart(titleText, labelText, xLabels, dataSeries, container) {
         x: {
           title: {
             display: true,
-            text: 'Time (Days)'
+            text: 'Time'
           }
         },
         y: {
@@ -310,8 +319,7 @@ function renderLineChart(titleText, labelText, xLabels, dataSeries, container) {
   });
 }
 
-// ⭐️ Dual Line Chart
-function renderDualLineChart(titleText, label1, label2, xLabels, data1, data2, container) {
+function renderComparisonChart(titleText, label1, label2, series1, series2, container) {
   const wrapper = document.createElement('div');
   wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
   wrapper.style.width = '100%';
@@ -339,12 +347,12 @@ function renderDualLineChart(titleText, label1, label2, xLabels, data1, data2, c
   new Chart(ctx, {
     type: 'line',
     data: {
-      labels: xLabels,
+      labels: Array.from({ length: Math.min(series1.length, series2.length) }, (_, i) => i + 1),
       datasets: [
         {
           label: label1,
-          data: data1,
-          backgroundColor: 'rgba(75, 192, 192, 0.4)',
+          data: series1,
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
           borderColor: 'rgba(75, 192, 192, 1)',
           borderWidth: 2,
           fill: true,
@@ -352,8 +360,8 @@ function renderDualLineChart(titleText, label1, label2, xLabels, data1, data2, c
         },
         {
           label: label2,
-          data: data2,
-          backgroundColor: 'rgba(255, 99, 132, 0.4)',
+          data: series2,
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
           borderColor: 'rgba(255, 99, 132, 1)',
           borderWidth: 2,
           fill: true,
@@ -374,13 +382,13 @@ function renderDualLineChart(titleText, label1, label2, xLabels, data1, data2, c
         x: {
           title: {
             display: true,
-            text: 'Time (Days)'
+            text: 'Time'
           }
         },
         y: {
           title: {
             display: true,
-            text: 'Normalized Value'
+            text: 'Value'
           },
           beginAtZero: false
         }
