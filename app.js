@@ -40,22 +40,17 @@ document.getElementById('runButton').addEventListener('click', async () => {
   }
 
   try {
-    // 1️⃣ Start simulation
     await fetch(startUrl, {
       method: 'POST',
       body: formData
     });
 
-    // 2️⃣ Listen to progress updates via SSE
     const eventSource = new EventSource(progressUrl);
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
-      // Round progress to integer (no decimals)
       const roundedProgress = Math.max(0, Math.min(100, Math.round(data.progress)));
 
-      // Update progress bar
       bar.style.width = `${roundedProgress}%`;
       bar.textContent = `${roundedProgress}%`;
       estimate.textContent = data.message;
@@ -93,9 +88,7 @@ function renderResults(result) {
   const chartsContainer = document.getElementById('chartsContainer');
   chartsContainer.innerHTML = '';
 
-  // ================================
   // ⭐️ Summary Table
-  // ================================
   const summary = result.summary_data;
   const metrics = summary['Metric'];
   const explanations = summary['Explanation'];
@@ -120,17 +113,13 @@ function renderResults(result) {
   html += `</tbody></table>`;
   document.getElementById('results').innerHTML = html;
 
-  // ================================
   // ⭐️ Histograms
-  // ================================
   for (const horizon in result.histogram_samples) {
     const samples = result.histogram_samples[horizon];
     renderHistogramChart(horizon, samples, chartsContainer);
   }
 
-  // ================================
-  // ⭐️ Synthetic Portfolio Time Series
-  // ================================
+  // ⭐️ Single Series Line Charts
   if (result.synthetic_series && result.synthetic_series.length > 0) {
     renderLineChart(
       'Synthetic Portfolio Value Over Time',
@@ -139,10 +128,6 @@ function renderResults(result) {
       chartsContainer
     );
   }
-
-  // ================================
-  // ⭐️ Rolling Volatility
-  // ================================
   if (result.rolling_volatility && result.rolling_volatility.length > 0) {
     renderLineChart(
       'Rolling Volatility (30-day)',
@@ -151,10 +136,6 @@ function renderResults(result) {
       chartsContainer
     );
   }
-
-  // ================================
-  // ⭐️ Rolling Beta
-  // ================================
   if (result.rolling_beta && result.rolling_beta.length > 0) {
     renderLineChart(
       'Rolling Beta vs Index (30-day)',
@@ -163,11 +144,31 @@ function renderResults(result) {
       chartsContainer
     );
   }
+
+  // ⭐️ Combined Charts
+  if (result.synthetic_series && result.index_series) {
+    renderComparisonChart(
+      'Synthetic Portfolio vs Index (Normalized)',
+      'Portfolio',
+      'Index',
+      result.synthetic_series,
+      result.index_series,
+      chartsContainer
+    );
+  }
+
+  if (result.rolling_volatility && result.rolling_beta) {
+    renderComparisonChart(
+      'Rolling Volatility & Beta (30-day)',
+      'Volatility',
+      'Beta',
+      result.rolling_volatility,
+      result.rolling_beta,
+      chartsContainer
+    );
+  }
 }
 
-// ================================
-// ⭐️ Render Histogram Chart
-// ================================
 function renderHistogramChart(horizon, samples, container) {
   const binCount = 20;
   const min = Math.min(...samples);
@@ -248,9 +249,6 @@ function renderHistogramChart(horizon, samples, container) {
   });
 }
 
-// ================================
-// ⭐️ Render Line Chart
-// ================================
 function renderLineChart(titleText, labelText, dataSeries, container) {
   const wrapper = document.createElement('div');
   wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
@@ -313,6 +311,84 @@ function renderLineChart(titleText, labelText, dataSeries, container) {
           title: {
             display: true,
             text: labelText
+          },
+          beginAtZero: false
+        }
+      }
+    }
+  });
+}
+
+function renderComparisonChart(titleText, label1, label2, series1, series2, container) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'chart-wrapper mb-5 p-3 border rounded shadow-sm bg-white';
+  wrapper.style.width = '100%';
+  wrapper.style.maxWidth = '900px';
+  wrapper.style.margin = '40px auto';
+
+  const title = document.createElement('h4');
+  title.innerText = titleText;
+  title.className = 'text-center mb-3';
+  wrapper.appendChild(title);
+
+  const canvasContainer = document.createElement('div');
+  canvasContainer.style.position = 'relative';
+  canvasContainer.style.height = '300px';
+  canvasContainer.style.width = '100%';
+
+  const canvas = document.createElement('canvas');
+  canvas.style.display = 'block';
+  canvasContainer.appendChild(canvas);
+  wrapper.appendChild(canvasContainer);
+  container.appendChild(wrapper);
+
+  const ctx = canvas.getContext('2d');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array.from({ length: Math.min(series1.length, series2.length) }, (_, i) => i + 1),
+      datasets: [
+        {
+          label: label1,
+          data: series1,
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.2
+        },
+        {
+          label: label2,
+          data: series2,
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.2
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: titleText
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Time'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Value'
           },
           beginAtZero: false
         }
