@@ -34,6 +34,11 @@ document.getElementById('runButton').addEventListener('click', async () => {
   formData.append('rebased', document.getElementById('rebased').checked);
   formData.append('num_simulations', parseInt(document.getElementById('num_simulations').value));
 
+  const baselineStartDate = document.getElementById('baseline_start_date').value;
+   if (baselineStartDate) {
+  formData.append('baseline_start_date', baselineStartDate);
+}
+
   const fileInput = document.getElementById('portfolio_file');
   if (fileInput.files.length > 0) {
     formData.append('portfolio_file', fileInput.files[0]);
